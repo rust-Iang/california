@@ -14,9 +14,11 @@ parser.add_argument('-t', '--today', action='store_true')
 args = parser.parse_args()
 
 DAYS_PER_WEEK = 7
-#days_per_year = 366 if isleap(last_event.year) else 365
 DAYS_PER_YEAR = 365
-COLS = 53
+WEEKS = 53
+SUNDAY = 6
+COL = 0
+ROW = 1
 
 events = subprocess.getoutput("git log --format='%as'").split('\n')
 for i, event in enumerate(events):
@@ -30,9 +32,39 @@ for i, event in enumerate(events):
 
 # We need to add something that always sorts the subprocess output to
 # descendant order (newest first), so that events[0] is always the most
-# recent date in the list
-final_date = events[0] if not args.today else dt.date.today()
-start_date = final_date - dt.timedelta(DAYS_PER_YEAR + DAYS_PER_WEEK - 1)
+# recent date in the list.
+#
+# Decide whether to use dt.datetime.now() or dt.date.today():
+#     if event >= start_date:
+#   TypeError: can't compare datetime.datetime to datetime.date
+#
+# Special emphasis is brought to the following line, for we might
+# explicitly format the string in all parts of the document, to make it
+# more intuitive to contributors. We have e a problem here, for we
+# might want to represent the dates with hours, minutes, seconds, but
+# we shouldn't compare full days using them (for we would be comparing
+# only a fraction of the whole day).
+final_date = events[0] if not args.today else dt.datetime.now().replace(microsecond=0)
+
+# The following is the block used to set the start_date variable:
+try:
+    # Can we make it self aware of the variable we are replacing?
+    # Like sys.argv[0]?
+    start_date = final_date.replace(year=final_date.year - 1)
+    ##start_date = final_date - dt.timedelta(DAYS_PER_YEAR + (week - weekday ))
+except ValueError:
+    start_date = final_date.replace(year=final_date.year - 1, day=final_date.day + 1)
+else:
+    '''
+        Github grid's first row is Sunday.
+        If it the start_date variable isn't already one, then substract
+        the current weekday number + 1 to achieve it.
+
+        No, there's no point in using isoweekday() because then we
+        would have to do 'SUNDAY - 1', so it's basically the same.
+    '''
+    if (weekday := start_date.weekday()) != SUNDAY:
+        start_date -= dt.timedelta(weekday + 1)
 
 latest_events = []
 for event in events:
@@ -43,54 +75,47 @@ for event in events:
         only if the grid is complete. i.e, the rightmost column doesn't
         have any gaps
     '''
-    if event >= start_date:
+    # It might be unnecessary to compare against final_date for now.
+    # But maybe not in the future
+    if event >= start_date and event <= final_date:
         latest_events.append(event)
     else:
         break
 
-#start_date = dt.datetime.fromisoformat(str(last_event.year) + '-01-01')
-#start_date.weekday() # this is the gap at the start
+# We need to check if latest_events list is empty
+print(max(latest_events), min(latest_events))
+print(f'final: {final_date}, start: {start_date}')
 
-
+cells = range((final_date - start_date).days)
+print(cells)
+grid = lambda cols, rows: divmod(cols, rows) 
 coords = []
-for col in range(COLS): 
-    coords.append(divmod(col, DAYS_PER_WEEK))
+for cell in cells:
+    coords.append(grid(cell, DAYS_PER_WEEK))
 
-number_of_weeks = coords[-1][0] # last item, then the first element inside the tuple
+##number_of_weeks = coords[-1][0] # last item, then the first element inside the tuple
 
-event_coords = []
-for date in dates:
-    day_of_year = (date - start_date).days
-    coord = divmod(day_of_year + offset, rows)
-    event_coords.append(coord)
-
-#def printEvent(n, days_with_events):
-#    if n in days_with_events:
-#        print('x', end='')
-#    else:
-#        print('.', end='')
-
+##event_coords = []
+##for date in dates:
+##    day_of_year = (date - start_date).days
+##    coord = divmod(day_of_year + offset, rows)
+##    event_coords.append(coord)
+##
 coords = sorted(coords, key=itemgetter(1, 0))
 
-#real_count = 0
-for col, row in coords:
-    print(col, row)
- 
-#for coord in coords_sorted:
-#    if count < number_of_weeks:
-#        printEvent(coord, event_coords)
-#        count +=1
-#    else:
-#        real_count += count
-#        if real_count == year_in_days:
-#            print()
-#            break
-#        else:
-#            count = 1
-#            print() # Newline
-#            printEvent(coord, event_coords)
 
-#print(*coords_sorted, sep='\n')
-#print(*coords, sep='\n')
-#for i, coord in enumerate(coords):
-#    print(coord)
+
+latest_row = 0
+for coord in coords:
+    if coord[ROW] == latest_row:
+        print('.', end='')
+    else:
+        latest_row = coord[ROW]
+        print()
+        print('.', end='')
+print()
+##for cell in cells:
+##    if (cell + 1) % 7:
+##        print('.', end='')
+##    else:
+##        print('.')
