@@ -24,8 +24,8 @@ COL = 0
 ROW = 1
 STEP = dt.timedelta(1)
 WEEKDAYS = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')
-##MONTHS = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
-MONTHS = ('J', 'F', 'M', 'A', 'm', 'J', 'j', 'a', 'S', 'O', 'N', 'D')  
+MONTHS = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+##MONTHS = ('J', 'F', 'M', 'A', 'm', 'J', 'j', 'a', 'S', 'O', 'N', 'D')  
 events = subprocess.getoutput("git log --format='%as'").split('\n')
 for i, event in enumerate(events):
     '''
@@ -129,7 +129,7 @@ for offset in days:
         first_run += 1
         first_month = current.month
     if current.day == last_day_of_this_month:
-        coord = grid((current - start_date).days, DAYS_PER_WEEK)
+        coord = grid((current - start_date + STEP * 6).days, DAYS_PER_WEEK)
         month_coords.append(coord)
 
 max_index = coords_by_col[-1][0]
@@ -178,17 +178,19 @@ def checkEvent(coord):
 ##        print('a', end=' ')
 ##    else:
 ##        print('', end='')
-count = 0
-print(' ' * 4, end='')
-for col in range(max_index + 1):
-##    for coord in columns[col]:
-    if any(coord in month_coords for coord in columns[col]):
-        print(MONTHS[count % len(MONTHS)], end='')
-        count += 1
-    else:
-        print(' ', end='')
+count = first_month
+for header_row in range(len(MONTHS[0]) + 1):
+    previous_row = header_row - 1
+    print(' ' * 4, end='')
+    for col in range(max_index + 1):
+    ##    for coord in columns[col]:
+        if any(coord in month_coords for coord in columns[col]):
+            print(MONTHS[count % len(MONTHS)][previous_row:header_row], end='')
+            count += 1
+        else:
+            print(' ', end='')
+    print()
 
-print()
 for coord in coords_by_row:
     tile = checkEvent(coord)
     if first_weekday == 0:
